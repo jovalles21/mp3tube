@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import 'axios'; // referenced by sadaslk-dlcore — keeps axios in the Vercel deployment
+import axios from 'axios';
 import pkg from 'sadaslk-dlcore';
 const { ytmp3 } = pkg;
 
@@ -32,22 +32,21 @@ export const POST: APIRoute = async ({ request }) => {
     result?.title || result?.name || result?.videoTitle || 'audio';
   const title = rawTitle.replace(/[/\\?%*:|"<>]/g, '-').trim() || 'audio';
 
-  const upstream = await fetch(downloadUrl, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0',
-      'Referer': 'https://www.youtube.com/',
-    },
-  }).catch((err: any) => {
-    console.error('[proxy] fetch error:', err?.message ?? err);
-    return null;
-  });
-
-  if (!upstream?.ok) {
-    console.error('[proxy] upstream status:', upstream?.status);
-    return jsonError(`Error al obtener el audio (${upstream?.status ?? 'sin respuesta'})`, 502);
+  let upstream: { data: ArrayBuffer; status: number };
+  try {
+    upstream = await axios.get(downloadUrl, {
+      responseType: 'arraybuffer',
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://www.youtube.com/',
+      },
+    });
+  } catch (err: any) {
+    console.error('[proxy] axios error:', err?.message ?? err);
+    return jsonError(`Error al obtener el audio (${err?.response?.status ?? 'sin respuesta'})`, 502);
   }
 
-  const buffer = await upstream.arrayBuffer();
+  const buffer: ArrayBuffer = upstream.data;
 
   if (!buffer.byteLength) {
     console.error('[proxy] upstream returned empty body');
