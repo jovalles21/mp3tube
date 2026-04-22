@@ -1,5 +1,7 @@
 import type { APIRoute } from 'astro';
-import ytdl from '@distube/ytdl-core';
+import 'axios'; // referenced by sadaslk-dlcore — keeps axios in the Vercel deployment
+import pkg from 'sadaslk-dlcore';
+const { ytmp3 } = pkg;
 
 export const prerender = false;
 
@@ -8,31 +10,29 @@ export const POST: APIRoute = async ({ request }) => {
   const url = (formData?.get('url') as string | null)?.trim() ?? '';
 
   if (!url) return jsonError('URL requerida', 400);
-  if (!ytdl.validateURL(url)) return jsonError('URL de YouTube inválida', 400);
 
-  let info: ytdl.videoInfo;
+  let result: any;
   try {
-    info = await ytdl.getInfo(url);
+    result = await ytmp3(url);
   } catch (err: any) {
-    console.error('[ytdl] getInfo error:', err?.message ?? err);
+    console.error('[ytmp3] error:', err?.message ?? err);
     return jsonError('No se pudo procesar el video', 502);
   }
 
-  const format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' });
+  const downloadUrl: string | undefined =
+    result?.url || result?.link || result?.download ||
+    result?.audio || result?.mp3 || result?.downloadUrl || result?.audioUrl;
 
-  if (!format?.url) {
-    console.error('[ytdl] no audio format found');
-    return jsonError('No se encontró formato de audio', 502);
+  if (!downloadUrl) {
+    console.error('[ytmp3] unexpected result shape:', JSON.stringify(result));
+    return jsonError('No se encontró URL de descarga en la respuesta', 502);
   }
 
-  const title = info.videoDetails.title.replace(/[/\\?%*:|"<>]/g, '-').trim() || 'audio';
+  const rawTitle: string = result?.filename?.replace(/\.mp3$/i, '') ||
+    result?.title || result?.name || result?.videoTitle || 'audio';
+  const title = rawTitle.replace(/[/\\?%*:|"<>]/g, '-').trim() || 'audio';
 
-  // Determine extension from the format container
-  const isWebm = format.container === 'webm';
-  const ext = isWebm ? 'webm' : 'm4a';
-  const contentType = isWebm ? 'audio/webm' : 'audio/mp4';
-
-  const upstream = await fetch(format.url, {
+  const upstream = await fetch(downloadUrl, {
     headers: {
       'User-Agent': 'Mozilla/5.0',
       'Referer': 'https://www.youtube.com/',
@@ -57,8 +57,8 @@ export const POST: APIRoute = async ({ request }) => {
   return new Response(buffer, {
     status: 200,
     headers: {
-      'Content-Type': contentType,
-      'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(`${title}.${ext}`)}`,
+      'Content-Type': 'audio/mpeg',
+      'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(title + '.mp3')}`,
       'Cache-Control': 'no-store',
       'Content-Length': String(buffer.byteLength),
     },
