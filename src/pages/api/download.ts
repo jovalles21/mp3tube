@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import axios from 'axios';
 import pkg from 'sadaslk-dlcore';
+import '../../lib/ensure-deps';
 const { ytmp3 } = pkg;
 
 export const prerender = false;
