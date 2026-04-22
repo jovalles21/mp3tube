@@ -13,8 +13,8 @@
   },
   "dependencies": {
     "@astrojs/vercel": "^10.0.4",
+    "@distube/ytdl-core": "^4.16.12",
     "astro": "^6.1.8",
-    "axios": "^1.15.2",
-    "sadaslk-dlcore": "^1.0.0"
+    "axios": "^1.15.2"
   }
 }

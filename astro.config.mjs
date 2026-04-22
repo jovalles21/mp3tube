@@ -4,9 +4,4 @@ import vercel from '@astrojs/vercel';
 export default defineConfig({
   output: 'server',
   adapter: vercel(),
-  vite: {
-    ssr: {
-      noExternal: ['sadaslk-dlcore', 'axios'],
-    },
-  },
 });
